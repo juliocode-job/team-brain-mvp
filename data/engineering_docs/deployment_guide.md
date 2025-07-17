@@ -1,0 +1,1 @@
+To deploy the service, run 'docker compose up'

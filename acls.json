@@ -1,0 +1,14 @@
+{
+  "user-1-alice": {
+    "name": "Alice",
+    "permissions": ["engineering_docs", "hr_policies"]
+  },
+  "user-2-bob": {
+    "name": "Bob",
+    "permissions": ["engineering_docs"]
+  },
+  "user-3-charlie": {
+    "name": "Charlie",
+    "permissions": ["hr_policies"]
+  }
+}

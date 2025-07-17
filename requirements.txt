@@ -1,0 +1,10 @@
+langchain
+langchain-openai
+python-dotenv
+chromadb-client
+langchain-community
+unstructured[md]
+onnxruntime
+langchain-chroma
+Flask
+Flask-Cors

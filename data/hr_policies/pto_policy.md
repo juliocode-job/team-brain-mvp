@@ -1,0 +1,1 @@
+Employees are entitled to 20 days of paid time off per year.
