@@ -1,4 +1,4 @@
-                                                     TeamBrain🤖
+TeamBrain MVP - Ego Eimi Technical Challenge
 
 TeamBrain is an enterprise knowledge engine designed to solve a common employee pain point: finding reliable information quickly and securely. 
 
@@ -157,73 +157,117 @@ Python: Version 3.11 or newer is recommended. Download Python
 
 Docker Desktop: This is essential for running the application's services. It must be running before you start the project. Download Docker Desktop
 
-II. Configuration
+## 1. Configuration
 
-Clone the Repository:
+### Clone the Repository:
 
+```bash
 git clone https://github.com/juliocode-job/team-brain-mvp.git
 cd team-brain-mvp
+```
 
-Create the Environment File:
+---
 
-The project uses a .env file to store the OpenAI API key. Create this file by making a copy of the example template.
+### Create the Environment File:
 
-For Windows PowerShell:
+The project uses a `.env` file to store the OpenAI API key. Create this file by making a copy of the example template.
 
+#### For Windows PowerShell:
+
+```powershell
 copy .env.example .env
+```
 
-For macOS/Linux:
+#### For macOS/Linux:
 
+```bash
 cp .env.example .env
+```
 
-Add Your API Key:
-Open the newly created .env file and paste your secret key from OpenAI.
+---
 
+### Add Your API Key:
+
+Open the newly created `.env` file and paste your secret key from OpenAI.
+
+```env
 OPENAI_API_KEY="your_openai_api_key_goes_here"
+```
 
-III. Running the Application
-This is the definitive, cross-platform method for running the project.
+---
 
-Build the Docker Images:
+## 2. Running the Application
+
+### Build the Docker Images:
+
 This command builds the container images for the app and ingest services based on the Dockerfile.
 
+```bash
 docker compose build
+```
 
-Run the Data Ingestion Job:
-This command starts the database, runs the one-time ingest.py script to load the data, and then removes the ingestion container.
+---
 
+### Run the Data Ingestion Job:
+
+This command starts the database, runs the one-time `ingest.py` script to load the data, and then removes the ingestion container.
+
+```bash
 docker compose run --rm ingest
+```
 
-Start the API Server:
+---
+
+### Start the API Server:
+
 This command starts the main app server in the background.
 
+```bash
 docker compose up -d app
+```
 
-Test the API (Integration Test):
+---
 
-Wait about 15 seconds for the server to initialize. Then, open a new, separate terminal and use curl to test the critical ACL path.
+### Test the API (Integration Test):
 
-For Windows PowerShell Users:
+Wait about 10 seconds for the server to initialize. Then, open a new, separate terminal to test the critical ACL path.
 
-Test Alice (should succeed):
+#### For Windows PowerShell Users:
 
+**Test Alice (should succeed):**
+
+```powershell
 Invoke-WebRequest -Uri http://localhost:5000/chat -Method POST -Headers @{"Content-Type"="application/json"} -Body '{"user_id": "user-1-alice", "message": "What is the deployment guide?"}'
+```
 
-Test Charlie (should be denied access):
+**Test Charlie (should be denied access):**
 
+```powershell
 Invoke-WebRequest -Uri http://localhost:5000/chat -Method POST -Headers @{"Content-Type"="application/json"} -Body '{"user_id": "user-3-charlie", "message": "What is the deployment guide?"}'
+```
 
-For macOS, Linux, and Git Bash/CMD on Windows:
+---
 
-Test Alice (should succeed):
+#### For macOS, Linux, and Git Bash/CMD on Windows:
 
+**Test Alice (should succeed):**
+
+```bash
 curl -X POST http://localhost:5000/chat -H "Content-Type: application/json" -d "{\"user_id\": \"user-1-alice\", \"message\": \"What is the deployment guide?\"}"
+```
 
-Test Charlie (should be denied access):
+**Test Charlie (should be denied access):**
 
+```bash
 curl -X POST http://localhost:5000/chat -H "Content-Type: application/json" -d "{\"user_id\": \"user-3-charlie\", \"message\": \"What is the deployment guide?\"}"
+```
 
-Stop the Services:
+---
+
+### Stop the Services:
+
 When you are finished, stop all running services and remove the database volume with:
 
+```bash
 docker compose down --volumes
+```
