@@ -1,4 +1,4 @@
-TeamBrain MVP - Ego Eimi Technical Challenge
+### TeamBrain MVP 
 
 TeamBrain is an enterprise knowledge engine designed to solve a common employee pain point: finding reliable information quickly and securely. 
 
