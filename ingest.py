@@ -1,98 +1,78 @@
 import os
-import json
+import time
 from dotenv import load_dotenv
-from langchain_openai import OpenAIEmbeddings, ChatOpenAI
+from langchain_community.document_loaders import DirectoryLoader
+from langchain.text_splitter import RecursiveCharacterTextSplitter
+from langchain_openai import OpenAIEmbeddings
 from langchain_chroma import Chroma
-from langchain_core.prompts import ChatPromptTemplate
-from langchain_core.runnables import RunnablePassthrough
-from langchain_core.output_parsers import StrOutputParser
 import chromadb
-from flask import Flask, request, jsonify
-from flask_cors import CORS
+import chromadb.errors
 
-# --- 0. Load Access Control List (ACL) ---
-with open('acls.json', 'r') as f:
-    acls = json.load(f)
+# --- Function to connect to ChromaDB with retries ---
+def connect_to_chroma_with_retries(host='chroma', port=8000, retries=5, delay=5):
+    """
+    Attempts to connect to the ChromaDB server with a retry mechanism.
+    """
+    for i in range(retries):
+        try:
+            # Use the service name 'chroma' as the host
+            client = chromadb.HttpClient(host=host, port=port)
+            client.heartbeat() # Check if the server is responsive
+            print("✅ Ingest script successfully connected to ChromaDB.")
+            return client
+        except Exception as e:
+            print(f"⚠️ Ingest connection attempt {i+1}/{retries} failed: {e}")
+            if i < retries - 1:
+                print(f"Retrying in {delay} seconds...")
+                time.sleep(delay)
+    raise ConnectionError("Could not connect to ChromaDB after several retries.")
 
-# --- 1. Initialize Connections and Models ---
+
+# Load environment variables from .env file
 load_dotenv()
-print("Initializing connections and models...")
+
+# --- 1. Load Documents ---
+print("Loading documents...")
+loader = DirectoryLoader('data/', glob="**/*.md", show_progress=True)
+documents = loader.load()
+print(f"Loaded {len(documents)} documents.")
+
+
+# --- 2. Clean Document Metadata ---
+print("Cleaning up metadata...")
+for doc in documents:
+    doc.metadata['source'] = os.path.basename(os.path.dirname(doc.metadata['source']))
+
+
+# --- 3. Split Documents into Chunks ---
+print("Splitting documents into chunks...")
+text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=200)
+chunks = text_splitter.split_documents(documents)
+print(f"Split documents into {len(chunks)} chunks.")
+
+# --- 4. Initialize Embeddings and Vector Store ---
+print("Initializing embeddings model...")
 embeddings = OpenAIEmbeddings()
-llm = ChatOpenAI(model="gpt-4o")
-chroma_client = chromadb.HttpClient(host='localhost', port=8000)
+print("Initializing ChromaDB client...")
+# Connect using the new robust function
+chroma_client = connect_to_chroma_with_retries(host='chroma')
 collection_name = "team_brain_collection"
-vector_store = Chroma(
+
+# --- 5. Create Vector Store and Add Chunks ---
+print("Creating vector store and adding documents...")
+try:
+    chroma_client.delete_collection(name=collection_name)
+    print("Deleted old collection.")
+except chromadb.errors.NotFoundError:
+    print("Collection not found, creating a new one.")
+    pass
+
+vector_store = Chroma.from_documents(
+    documents=chunks,
+    embedding=embeddings,
     client=chroma_client,
-    collection_name=collection_name,
-    embedding_function=embeddings,
+    collection_name=collection_name
 )
-print("✅ Connections and models initialized.")
 
-# --- 2. Define the RAG Chain Template ---
-# We define the template once
-template = """
-You are an enterprise assistant. Answer the question based only on the following context.
-If you don't know the answer, just say that you don't know.
-
-Context:
-{context}
-
-Question:
-{question}
-"""
-prompt = ChatPromptTemplate.from_template(template)
-
-# --- 3. Initialize the Flask API Server ---
-app = Flask(__name__)
-CORS(app)
-
-# --- 4. Define API Endpoints ---
-@app.route('/chat', methods=['POST'])
-def chat():
-    """
-    Handles chat requests from the user, now with robust ACL enforcement.
-    """
-    data = request.json
-    user_id = data.get('user_id')
-    user_message = data.get('message')
-
-    if not user_id or not user_message:
-        return jsonify({"error": "Please provide both a 'user_id' and a 'message'."}), 400
-
-    # --- ACL ENFORCEMENT ---
-    user_permissions = acls.get(user_id, {}).get("permissions", [])
-
-    if not user_permissions:
-        return jsonify({"answer": "Access denied. You do not have permissions to any documents."}), 403
-
-    # --- ROBUST FILTER CREATION ---
-    # This new logic correctly handles cases for one or many permissions.
-    search_kwargs = {"k": 2}
-    if len(user_permissions) == 1:
-        # Simpler filter for a single permission
-        search_kwargs["filter"] = {"source": user_permissions[0]}
-    else:
-        # Filter for multiple permissions using $or
-        search_kwargs["filter"] = {"$or": [{"source": doc} for doc in user_permissions]}
-
-    retriever = vector_store.as_retriever(search_kwargs=search_kwargs)
-
-    # --- DYNAMICALLY CREATE THE CHAIN WITH THE FILTERED RETRIEVER ---
-    chain = (
-        {"context": retriever, "question": RunnablePassthrough()}
-        | prompt
-        | llm
-        | StrOutputParser()
-    )
-
-    # --- AUDIT LOG ---
-    print(f"INFO: Query from user_id: '{user_id}' | Permissions: {user_permissions} | Message: '{user_message}'")
-
-    bot_response = chain.invoke(user_message)
-
-    return jsonify({"answer": bot_response})
-
-
-# --- 5. Run the Application ---
-if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000)
+print("\n✅ Ingestion complete.")
+print(f"Total chunks stored in ChromaDB: {vector_store._collection.count()}")

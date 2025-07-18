@@ -1,16 +1,40 @@
-version: '3.8'
-
+# No version needed for modern Docker Compose
 services:
-  app:
-    build: .
-    env_file:
-      - .env
-    # This will keep the container running
-    command: tail -f /dev/null
-
+  # The ChromaDB vector database
   chroma:
     image: chromadb/chroma
     ports:
-      - "8000:8000"
+      - "8001:8000"
     volumes:
-      - ./chroma:/chroma/.chroma/
+      - ./chroma_data:/chroma/.chroma/
+    networks:
+      - team-brain-net
+
+  # The main Flask API application
+  app:
+    build: . # Build from the Dockerfile in the current directory
+    env_file:
+      - .env # Pass the OpenAI API key to the container
+    ports:
+      - "5000:5000"
+    networks:
+      - team-brain-net
+    depends_on:
+      - chroma # Tell the app to wait for the database to start
+
+  # A one-time service to run the data ingestion script
+  ingest:
+    build: .
+    env_file:
+      - .env
+    networks:
+      - team-brain-net
+    depends_on:
+      - chroma
+    # --- THIS IS THE FIX ---
+    # Override the default command and run ingest.py specifically
+    command: ["python", "ingest.py"]
+
+networks:
+  team-brain-net:
+    driver: bridge
