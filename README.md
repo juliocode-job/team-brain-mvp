@@ -1,10 +1,10 @@
-### TeamBrain MVP 
+# TeamBrain MVP
 
-TeamBrain is an enterprise knowledge engine designed to solve a common employee pain point: finding reliable information quickly and securely. 
+TeamBrain is an enterprise knowledge engine designed to solve a common employee pain point: finding reliable information quickly and securely.
 
 This MVP was built from scratch to demonstrate mastery over the core challenge: Multi-source ingestion, ACL-aware retrieval-augmented generation (RAG), and simulated SSO / audit logging.
 
-This project was developed by Julio Emanuel with the assistance of an AI pair-programming partner. 
+This project was developed by Julio Emanuel with the assistance of an AI pair-programming partner.
 
 The entire application is containerized using Docker, ensuring a simple and reliable setup process.
 
